@@ -3,15 +3,17 @@ import time
 
 class server(object):
     def __init__(self):
+
         pass
 
-    def on(self,port):
+    def on(self,port,timeout):
         self.serSocket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
         self.serSocket.bind((socket.gethostname(),port))
         self.serSocket.listen(10)
         print('server on /n wait connect...')
         self.connect, self.address = self.serSocket.accept()
         print(str(self.address)+'connected')
+        self.serSocket.settimeout(timeout)
         return self.address
 
     def recv(self):
