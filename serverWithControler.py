@@ -13,6 +13,7 @@ def toDuty(config,freq,per):#毫秒计算
     duty=tim*freq/1000
     duty=int(duty*1023)
     return duty
+
 def perDuty(per):#占空比计算备用
     ma,mid,mi=10,5,0
     if per<0:
@@ -21,6 +22,7 @@ def perDuty(per):#占空比计算备用
         duty=-(mid-mi)*per+mid
     else: duty=mid
     return duty
+
 def zoom(config,upOrDown):
     #config['ma'],config['mid'],config['mi']
     if upOrDown=='up' and config['ma']<2 and config['mi']>1:
@@ -29,6 +31,13 @@ def zoom(config,upOrDown):
     if upOrDown=='down' and config['ma']>1.5 and config['mi']<1.5:
         config['ma']-=0.01
         config['mi']+=0.01
+
+def volt(num):#算电池电压
+    U0=3.3*num/1023
+    U=U0*4
+    return U
+
+
 pygame.init()
 pygame.joystick.init()
 while True:
@@ -44,9 +53,9 @@ while True:
     #验证身份
     while True:
         s1 = server()
-        s1.on(8266)
-        if s1.recv()=='01':
-            s1.send('OK')
+        s1.on(8266,6)
+        if s1.recv()=='51':
+            s1.send([51,{'pin':5,'freq':50},{'pin':4,'freq':50},{},{},{}])
             break
         s1.close()
     #初始化数据
@@ -56,14 +65,21 @@ while True:
         config=[{'ma':2,'mid':1.5,'mi':1},{'ma':2,'mid':1.5,'mi':1}]
     axis1,axis0=[0,0,0,0,0],[0,0,0,0]
     zeroNum=0
-    reply={'freq':None,'duty':None,'sle':None,'mes':None}
+    reply={'freq':None,'duty0':None,'duty1':None,'sle':None,'mes':None}
     a=True
     #接收
     while True:
-        message=s1.recv()
-        if message=='01':
-            s1.send('OK')
+        message=eval(s1.recv())
+        if message==51:
+            s1.send([51])
             continue
+        if message['adc']:#低电压保护
+            print(message)
+            print(volt(message['adc']))
+        #    if volt(message['adc'])<=6.2:
+        #        s1.send('close')
+        #        s1.close()
+        #        break
         #获取摇杆动作
         pygame.event.get()
         joystick = pygame.joystick.Joystick(0)
@@ -104,9 +120,7 @@ while True:
             axis1[1]=-1
             zeroNum=0
         reply0=dict(reply)
-        reply={'freq':None,'duty':None,'sle':None,'mes':None}
-        reply['duty']=[round(toDuty(config[0],50,axis1[1]),3),round(toDuty(config[1],50,axis1[3]),3)]
-        
+        reply={'freq':None,'duty0':round(toDuty(config[0],50,axis1[1]),3),'duty1':round(toDuty(config[1],50,axis1[3]),3),'sle':None,'mes':None}
         if zeroNum>250 or button[5]:
             reply['mes']='close'
         if zeroNum<3:
