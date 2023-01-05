@@ -1,14 +1,15 @@
 import socket
 
 class client(object):
-    def __init__(self,host,port):
-        self.host=host
-        self.port=port
+    def __init__(self):
+        pass
 
-    def connect(self):
+    def connect(self,host,port,timeout):
         self.cliSocket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-        address=socket.getaddrinfo(self.host, self.port)[0][-1]
+        self.cliSocket.settimeout(10)
+        address=socket.getaddrinfo(host, port)[0][-1]
         self.cliSocket.connect(address)
+        self.cliSocket.settimeout(timeout)
 
     def send(self,message):
         self.cliSocket.send(str(message).encode())
