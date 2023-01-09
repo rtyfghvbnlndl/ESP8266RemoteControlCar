@@ -77,19 +77,16 @@ def fWrite(content,name):
 
 #读档
 def fRead(name):
-    if not os.path.exists("%s.txt" % name):
+    if not os.path.exists("%s\%s.txt" % (os.path.dirname(__file__),name)):
         return None
     with open("%s\%s.txt" % (os.path.dirname(__file__),name),"r",encoding="utf-8",newline="") as f:
         content=f.read()
-        return content
+        return eval(content)
 
 
 if __name__=="__main__":
-    dic={}
-    a=counter(dic,1)
-    a.success('a')
-    a.fail('b')
-    a.show()
-    
-    print(os.path.dirname(__file__))
-    fWrite(dic,'test')
+    if fRead('config'):
+        config=fRead('config')
+    else:
+        config=[{'ma':2,'mid':1.5,'mi':1},{'ma':2,'mid':1.5,'mi':1}]
+    print(config)

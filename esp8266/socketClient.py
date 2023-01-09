@@ -14,7 +14,8 @@ class client(object):
     def send(self,message):
         self.cliSocket.send(str(message).encode())
         print('[client] send:'+str(message))
-        print('wait reply...')
+        
+    def recv(self):
         self.reply = self.cliSocket.recv(1536).decode()
         print('[server]:'+self.reply)
         return self.reply

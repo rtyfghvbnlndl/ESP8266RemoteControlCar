@@ -35,7 +35,10 @@ else:
                 c1.connect(address, 8266,0.5)
                 break
             except:pass
-        header=eval(c1.send('51'))
+        while True:
+            c1.send('51')
+            header=eval(c1.recv())
+            if header:break
         pwmN=[]
         if header[0]==51:
             if header[1]:
@@ -62,19 +65,13 @@ else:
         for n,item in enumerate(pwmN):
             message['duty%i'%n]=item.duty()
         message['adc']=adc.read()
-        try:reply=eval(c1.send(message))
-        except:#失联处理
+        c1.send(message)
+        try:reply=eval(c1.recv())
+        except:
             for item in pwmN:
                 item.duty(0)
-            for i in range(5):
-                c1.cliSocket.settimeout(2)
-                try: header=c1.send('51')
-                finally:
-                    if header[0]=='51':
-                        c1.cliSocket.settimeout(0.5)
-                        break
-            else:break
-            continue 
+            print('no reply')
+            continue
         for n,item in enumerate(pwmN):
             if reply['duty%i'%n]:
                 item.duty(reply['duty%i'%n])
@@ -85,7 +82,7 @@ else:
             break
     for item in pwmN:
         item.deinit()
-    c1.send('close')
+    c1.send('"close"')
     c1.close()
     st.ledTwinkle([1,0.5],2)
 
