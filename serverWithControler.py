@@ -23,20 +23,6 @@ def perDuty(per):#占空比计算备用
     else: duty=mid
     return duty
 
-def moveAll(config,num):
-    config['ma']+=num
-    config['mid']+=num
-    config['mi']+=num
-
-def zoom(config,upOrDown):
-    #config['ma'],config['mid'],config['mi']
-    if upOrDown=='up' and config['ma']<2 and config['mi']>1:
-        config['ma']+=0.01
-        config['mi']-=0.01
-    if upOrDown=='down' and config['ma']>1.5 and config['mi']<1.5:
-        config['ma']-=0.01
-        config['mi']+=0.01
-
 def volt(num):#算电池电压
     U0=3.3*num/1023
     U=U0*3
@@ -104,15 +90,21 @@ while True:
             button.append(buis)
         #油门偏移缩放
         if button[13]:
-            if button[2]:moveAll(config[0],0.02)
-            if button[1]:moveAll(config[0],-0.02)
-            if button[0]:zoom(config[0],'up')
-            if button[3]:zoom(config[0],'down')
+            if button[2]:config[0]['mid']+=0.02
+            if button[1]:config[0]['mid']-=0.02
+        if button[11]:
+            if button[2]:config[0]['ma']+=0.02
+            if button[1]:config[0]['ma']-=0.02
+            if button[0]:config[0]['mi']+=0.02
+            if button[3]:config[0]['mi']-=0.02
         if button[14]:
-            if button[2]:moveAll(config[1],0.02)
-            if button[1]:moveAll(config[1],-0.02)
-            if button[0]:zoom(config[1],'up')
-            if button[3]:zoom(config[1],'down')
+            if button[2]:config[1]['mid']+=0.02
+            if button[1]:config[1]['mid']-=0.02
+        if button[12]:
+            if button[2]:config[1]['ma']+=0.02
+            if button[1]:config[1]['ma']-=0.02
+            if button[0]:config[1]['mi']+=0.02
+            if button[3]:config[1]['mi']-=0.02
         #处理结果
         if message['adc'] and zeroNum>3:#低电压保护
             if volt(message['adc'])<=6.4:
@@ -121,9 +113,9 @@ while True:
                 if lowBatErro>0:
                     lowBatErro-=1
             if lowBatErro>4:
-                #reply['mes']='close'
+                reply['mes']='close'
                 print('LOW BATTERY! RECHARGE!')
-                #break
+                break
         if button[10]:
             axis1[3]=-1
             zeroNum=0
@@ -136,7 +128,7 @@ while True:
         elif zeroNum>200:
             reply['sle']=5
         else:
-             reply['sle']=0.05
+             reply['sle']=0.01
         #压力测试
         #reply['sle']=0.001
         #if a:

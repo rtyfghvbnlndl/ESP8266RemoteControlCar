@@ -22,7 +22,7 @@ def do_connect(ssid1, key1):#连接wifi函数
             st.ledTwinkle([0.5, 1], 10)
 
 st.ledTwinkle([1, 0.5], 2)
-do_connect('Router', 'setup0000')
+do_connect('SSID', 'Passwd')
 addressList=['192.168.10.24','192.168.10.112']
 while not wlan.isconnected():#确认wifi连接
     pass
