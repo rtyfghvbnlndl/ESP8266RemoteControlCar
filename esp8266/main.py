@@ -41,7 +41,9 @@ while True:
         while True:
             c1.send('51')
             header=eval(c1.recv())
-            if header:break
+            if header:
+                config=header[6]
+                break
         pwmN=[]
         if header[0]==51:
             if header[1]:
@@ -63,13 +65,14 @@ while True:
         c1.close()
     adc = ADC(0)
     sleTime=0.05
-
+    p0,p1=0
     while True:#循环请求指令
-        message={'sle':sleTime}#返回信息
+        message={'sle':sleTime}
         for n,item in enumerate(pwmN):
             message['duty%i'%n]=item.duty()
         message['adc']=adc.read()
         c1.send(message)
+#上一次信息已经返回
         try:reply=eval(c1.recv())
         except:
             for item in pwmN:
@@ -77,6 +80,27 @@ while True:
             print('no reply')
             c1.close()
             break
+        #右
+        if True:
+            p0+=1
+            p1-=1
+        #左
+        if True:
+            p0-+1
+            p1+=1
+        if (p1-p0)<20 and (abs(p1)>=10 or abs(p0)>=10):
+            p=p0-p1
+            if p>0:
+                p0=10
+                p1=10-p
+            elif p<0:
+                p1=10
+                p0=10+p
+            else:
+                p1=p0=0
+        reply['duty0']+=p0
+        reply['duty1']+=p1
+
         for n,item in enumerate(pwmN):
             if reply['duty%i'%n]:
                 item.duty(reply['duty%i'%n])

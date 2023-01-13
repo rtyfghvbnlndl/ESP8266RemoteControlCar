@@ -3,19 +3,9 @@ import time
 from socketServer import server
 from tools import fRead,fWrite
 
-def toDuty(config,freq,per):#毫秒计算
-    ma,mid,mi=config['ma'],config['mid'],config['mi']
-    if per<0:
-        tim=-(ma-mid)*per+mid
-    elif per>0:
-        tim=-(mid-mi)*per+mid
-    else: tim=mid
-    duty=tim*freq/1000
-    duty=int(duty*1023)
-    return duty
-
-def perDuty(per):#占空比计算备用
-    ma,mid,mi=10,5,0
+#新的控制器，按姿态控制
+def toDuty(config,per):
+    ma,mid,mi=config['max'],config['mid'],config['min']
     if per<0:
         duty=-(ma-mid)*per+mid
     elif per>0:
@@ -42,8 +32,17 @@ while True:
 if fRead('config'):
     config=fRead('config')
 else:
-    config=[{'ma':2,'mid':1.5,'mi':1},{'ma':2,'mid':1.5,'mi':1}]
-print(config)
+    config=[{'max':100,'mid':150,'min':200},{'max':100,'mid':150,'min':200}]
+configed=list(config)
+def bOrs(config):
+    if config['max']<config['min']:
+        ma=config['max']
+        config['max']=config['min']
+        config['min']=ma
+    return config
+for i in range(len(configed)):
+    configed[i]=bOrs(configed[i])
+print(config,configed)
 
 while True:
     #验证身份
@@ -51,7 +50,7 @@ while True:
         s1 = server()
         s1.on(8266,6)
         if s1.recv()=='51':
-            s1.send([51,{'pin':5,'freq':100},{'pin':4,'freq':100},{},{},{}])
+            s1.send([51,{'pin':5,'freq':100},{'pin':4,'freq':100},{},{},{},configed])
             break
         s1.close()
     #初始化数据
@@ -89,21 +88,21 @@ while True:
             button.append(buis)
         #油门偏移缩放
         if button[13]:
-            if button[2]:config[0]['mid']+=0.02
-            if button[1]:config[0]['mid']-=0.02
+            if button[2]:config[0]['mid']+=1
+            if button[1]:config[0]['mid']-=1
         if button[11]:
-            if button[2]:config[0]['ma']+=0.02
-            if button[1]:config[0]['ma']-=0.02
-            if button[0]:config[0]['mi']+=0.02
-            if button[3]:config[0]['mi']-=0.02
+            if button[2]:config[0]['max']+=1
+            if button[1]:config[0]['max']-=1
+            if button[0]:config[0]['min']+=1
+            if button[3]:config[0]['min']-=1
         if button[14]:
-            if button[2]:config[1]['mid']+=0.02
-            if button[1]:config[1]['mid']-=0.02
+            if button[2]:config[1]['mid']+=1
+            if button[1]:config[1]['mid']-=1
         if button[12]:
-            if button[2]:config[1]['ma']+=0.02
-            if button[1]:config[1]['ma']-=0.02
-            if button[0]:config[1]['mi']+=0.02
-            if button[3]:config[1]['mi']-=0.02
+            if button[2]:config[1]['max']+=1
+            if button[1]:config[1]['max']-=1
+            if button[0]:config[1]['min']+=1
+            if button[3]:config[1]['min']-=1
         #处理结果
         if message['adc'] and zeroNum>3:#低电压保护
             if volt(message['adc'])<=6.4:
@@ -115,27 +114,41 @@ while True:
                 reply['mes']='close'
                 print('LOW BATTERY! RECHARGE!')
                 break
+        #一键满速
         if button[10]:
             axis1[3]=-1
             zeroNum=0
         if button[9]:
             axis1[1]=-1
             zeroNum=0
-        reply={'duty0':round(toDuty(config[0],100,axis1[1]),3),'duty1':round(toDuty(config[1],100,axis1[3]),3),'sle':None,'mes':None}
+       
+        #左摇杆纵向控制前后
+        reply={'duty0':round(toDuty(config[0],axis1[1]),3),'duty1':round(toDuty(config[1],axis1[1]),3),'sle':None,'mes':None}
+         #右摇杆横向控制转向
+        half=abs(axis1[3])
+        if axis1[3]!=0:
+            if axis1[3]>0:#右
+                reply['duty0']+=half*abs(config[0]['max']-config[0]['min'])
+                if reply['duty0']>max(config[0]['max'],config[0]['min']):
+                    reply['duty1']-=abs(config[1]['max']-config[1]['min'])*(abs(axis1[3])-(max(config[0]['max'],config[0]['min'])-reply['duty0'])/abs(config[0]['max']-config[0]['min']))
+                    reply['duty0']=max(config[0]['max'],config[0]['min'])
+                else:
+                    reply['duty1']-=half*abs(config[1]['max']-config[1]['min'])
+            else:#左
+                reply['duty0']-=half*abs(config[0]['max']-config[0]['min'])
+                if reply['duty0']<min(config[0]['max'],config[0]['min']):
+                    reply['duty1']+=abs(config[1]['max']-config[1]['min'])*(abs(axis1[3])-(reply['duty0']-min(config[0]['max'],config[0]['min']))/abs(config[0]['max']-config[0]['min']))
+                    reply['duty0']=min(config[0]['max'],config[0]['min'])
+                else:
+                    reply['duty1']+=half*abs(config[1]['max']-config[1]['min'])
+
+        #无操作休眠
         if zeroNum>1100 or button[5]:
             reply['mes']='close'
         elif zeroNum>1000:
             reply['sle']=5
         else:
              reply['sle']=0.01
-        #压力测试
-        #reply['sle']=0.001
-        #if a:
-        #    reply['duty']=[306,306]
-        #else:
-        #    reply['duty']=[206,206]
-        #a=not a
-        #zeroNum=3
         #删掉重复指令
         for key in ('duty0','duty1','sle'):
             if message[key]==reply[key]:
