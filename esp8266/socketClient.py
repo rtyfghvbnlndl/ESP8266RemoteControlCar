@@ -6,7 +6,7 @@ class client(object):
 
     def connect(self,host,port,timeout):
         self.cliSocket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-        self.cliSocket.settimeout(10)
+        self.cliSocket.settimeout(timeout)
         address=socket.getaddrinfo(host, port)[0][-1]
         self.cliSocket.connect(address)
         self.cliSocket.settimeout(timeout)

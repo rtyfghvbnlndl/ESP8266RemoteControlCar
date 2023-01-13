@@ -4,37 +4,40 @@ import time
 import network
 from machine import PWM,Pin,ADC
 
-wlan=None
-def do_connect(ssid1, key1):#连接wifi函数
-    global wlan
+st.ledTwinkle([0.5,1], 2)#开机闪led
+led=Pin(2, Pin.OUT)
+
+def do_connect():
     wlan = network.WLAN(network.STA_IF)
-    print(type(wlan))
     wlan.active(True)
     if not wlan.isconnected():
         print('connecting to network...')
-        wlan.connect(ssid1, key1)
-        for i in range(30):
-            time.sleep(0.5)
-        if wlan.isconnected():
-            print('network config:', wlan.ifconfig())
-        else:
-            print('timeout')
-            st.ledTwinkle([0.5, 1], 10)
+        wlan.connect('Router', 'setup0000')
+        while not wlan.isconnected():
+            pass
+    print('network config:', wlan.ifconfig())
+    return wlan
 
-st.ledTwinkle([1, 0.5], 2)
-do_connect('SSID', 'Passwd')
 addressList=['192.168.10.24','192.168.10.112']
-while not wlan.isconnected():#确认wifi连接
-    pass
-else:
+
+while not do_connect().isconnected():#确认wifi连接
+    do_connect()
+
+while True:
     while True:#握手
         st.ledTwinkle([0.5], 2)
         for address in addressList:
             try:
+                led.value(0)
+                print('try'+str(address))
                 c1 = socketClient.client()
                 c1.connect(address, 8266,0.5)
+                print('ok')
+                led.value(1)
                 break
             except:pass
+        else:
+            continue
         while True:
             c1.send('51')
             header=eval(c1.recv())
@@ -60,6 +63,7 @@ else:
         c1.close()
     adc = ADC(0)
     sleTime=0.05
+
     while True:#循环请求指令
         message={'sle':sleTime}#返回信息
         for n,item in enumerate(pwmN):
@@ -71,7 +75,8 @@ else:
             for item in pwmN:
                 item.duty(0)
             print('no reply')
-            continue
+            c1.close()
+            break
         for n,item in enumerate(pwmN):
             if reply['duty%i'%n]:
                 item.duty(reply['duty%i'%n])
@@ -79,12 +84,33 @@ else:
             sleTime=reply['sle']
         time.sleep(sleTime)
         if reply['mes']=='close':#收到关闭指令
-            break
-    for item in pwmN:
-        item.deinit()
-    c1.send('"close"')
-    c1.close()
-    st.ledTwinkle([1,0.5],2)
+            for item in pwmN:
+                item.deinit()
+            c1.send('"close"')
+            c1.close()
+            st.ledTwinkle([1,0.5],2)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
