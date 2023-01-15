@@ -25,7 +25,7 @@ def perDuty(per):#占空比计算备用
 
 def volt(num):#算电池电压
     U0=3.3*num/1023
-    U=U0*4
+    U=U0*3
     return U
 
 pygame.init()
@@ -88,7 +88,7 @@ while True:
             buis=joystick.get_button(i)
             button.append(buis)
         #油门偏移缩放
-        if button[13]:
+        if button[11]:
             if button[2]:config[0]['mid']+=0.02
             if button[1]:config[0]['mid']-=0.02
         if button[11]:
@@ -107,6 +107,7 @@ while True:
         #处理结果
         if message['adc'] and zeroNum>3:#低电压保护
             if volt(message['adc'])<=6.4:
+                print( volt(message['adc']))
                 lowBatErro+=1
             else:
                 if lowBatErro>0:
@@ -122,13 +123,21 @@ while True:
         if button[9]:
             axis1[1]=-1
             zeroNum=0
-        reply={'duty0':round(toDuty(config[0],100,axis1[1]),3),'duty1':round(toDuty(config[1],100,axis1[3]),3),'sle':None,'mes':None}
+        reply={'duty0':round(toDuty(config[0],100,axis1[1]),3),'duty1':round(toDuty(config[1],100,axis1[2]),3),'sle':None,'mes':None}
         if zeroNum>1100 or button[5]:
             reply['mes']='close'
         elif zeroNum>1000:
             reply['sle']=5
         else:
              reply['sle']=0.01
+        #压力测试
+        #reply['sle']=0.001
+        #if a:
+        #    reply['duty']=[306,306]
+        #else:
+        #    reply['duty']=[206,206]
+        #a=not a
+        #zeroNum=3
         #删掉重复指令
         for key in ('duty0','duty1','sle'):
             if message[key]==reply[key]:
