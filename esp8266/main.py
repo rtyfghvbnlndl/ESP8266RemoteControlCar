@@ -2,7 +2,8 @@ import st
 import socketClient
 import time
 import network
-from machine import PWM,Pin,ADC
+from machine import PWM,Pin,ADC,I2C
+import mpu6050
 
 st.ledTwinkle([0.5,1], 2)#开机闪led
 led=Pin(2, Pin.OUT)
@@ -27,21 +28,28 @@ while True:
     while True:#握手
         st.ledTwinkle([0.5], 2)
         for address in addressList:
+            
+            led.value(0)
+            print('try'+str(address))
+            c1 = socketClient.client()
+            try:c1.connect(address, 8266,3)
+            except:continue
+            print('ok')
             try:
-                led.value(0)
-                print('try'+str(address))
-                c1 = socketClient.client()
-                c1.connect(address, 8266,0.5)
-                print('ok')
                 led.value(1)
                 break
             except:pass
         else:
             continue
-        while True:
+        isTimeout=False
+        while not isTimeout:
             c1.send('51')
-            header=eval(c1.recv())
-            if header:break
+            try:
+                header=eval(c1.recv(3))
+                if header:break
+            except:
+                isTimeout=True
+        else:continue
         pwmN=[]
         if header[0]==51:
             if header[1]:
@@ -61,34 +69,67 @@ while True:
                 pwmN.append(pwm4)
             break
         c1.close()
+        continue
+    config = header[6]
+    if header[7]['mpu6050']:#是否启用mpu6050
+        open6050 = True
+        aNum = header[7]['mpu6050'][0]
+        i2c = I2C(scl=Pin(12),sda=Pin(14))
+        mpu = mpu6050.accel(i2c)
     adc = ADC(0)
     sleTime=0.05
+    rl=None
 
     while True:#循环请求指令
         message={'sle':sleTime}#返回信息
         for n,item in enumerate(pwmN):
             message['duty%i'%n]=item.duty()
         message['adc']=adc.read()
+        message['rl']=rl
+        m=mpu.get_values()
         c1.send(message)
-        try:reply=eval(c1.recv())
+#上一次信息已经返回
+        try:reply=eval(c1.recv(1))
         except:
-            for item in pwmN:
-                item.duty(0)
             print('no reply')
-            c1.close()
             break
+        
+        if reply["config"]:
+            config=reply["config"]
+#方向无操作时自动控制方向 mpu6050
+        if (not reply['duty1'])and open6050:
+            if pwm0.duty()>config[0]['mid']:#判断前后
+                a=-1#控制正负
+            else:a=1
+            
+            numset=pwm1.duty()-int(m['GyZ']/aNum)*a
+            if numset>config[1]['max']:
+                numset=config[1]['max']
+            elif numset<config[1]['min']:
+                numset=config[1]['min']
+            #右
+            if  m['GyZ']<-500:
+                reply['duty1']=numset
+                rl='Left'
+            #左
+            elif m['GyZ']>500:
+                reply['duty1']=numset
+                rl="Right"
+            else:
+                rl=None
+            print(m['GyZ'],rl,pwm1.duty())
+#应用参数
         for n,item in enumerate(pwmN):
             if reply['duty%i'%n]:
                 item.duty(reply['duty%i'%n])
-        if reply['sle']:
-            sleTime=reply['sle']
-        time.sleep(sleTime)
-        if reply['mes']=='close':#收到关闭指令
-            for item in pwmN:
-                item.deinit()
-            c1.send('"close"')
-            c1.close()
-            st.ledTwinkle([1,0.5],2)
+
+        eval(reply['mes'])
+    for item in pwmN:
+        item.deinit()
+    c1.send('"close"')
+    c1.close()
+    st.ledTwinkle([1,0.5],2)
+
 
 
 

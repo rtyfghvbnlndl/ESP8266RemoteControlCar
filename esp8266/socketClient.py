@@ -9,23 +9,20 @@ class client(object):
         self.cliSocket.settimeout(timeout)
         address=socket.getaddrinfo(host, port)[0][-1]
         self.cliSocket.connect(address)
-        self.cliSocket.settimeout(timeout)
 
     def send(self,message):
-        self.cliSocket.send(str(message).encode())
-        print('[client] send:'+str(message))
+        try:self.cliSocket.send(str(message).encode())
+        except:pass
+        #print('[client] send:'+str(message))
         
-    def recv(self):
+    def recv(self,timeout):
+        self.cliSocket.settimeout(timeout)
         self.reply = self.cliSocket.recv(1536).decode()
-        print('[server]:'+self.reply)
+        #print('[server]:'+self.reply)
         return self.reply
     
     def close(self):
         self.cliSocket.close()
-    
-    def noReplySend(self,message):
-        self.cliSocket.send(str(message).encode())
-        print('[client] no reply send:'+str(message))
 
 if __name__=='__main__':
  

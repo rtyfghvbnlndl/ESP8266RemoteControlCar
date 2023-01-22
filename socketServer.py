@@ -6,50 +6,30 @@ class server(object):
 
         pass
 
-    def on(self,port,timeout):
+    def on(self,port):
         self.serSocket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
         self.serSocket.bind((socket.gethostname(),port))
         self.serSocket.listen(10)
-        print('server on /n wait connect...')
-        self.connect, self.address = self.serSocket.accept()
+        print('server on')
+
+    def connect(self):
+        print("wait connect")
+        self.connec, self.address = self.serSocket.accept()
         print(str(self.address)+'connected')
-        self.serSocket.settimeout(timeout)
         return self.address
 
-    def recv(self):
+    def recv(self,timeout):
         print('wait client...')
-        self.message = self.connect.recv(1536).decode()
-        print('[client]:'+self.message)
-        return self.message
+        self.connec.settimeout(timeout)
+        message = self.connec.recv(1536).decode()
+        print('[client]:'+message)
+        return message
     
     def send(self,message):
-        self.connect.send(str(message).encode())
+        self.connec.send(str(message).encode())
         print('[server] reply:'+str(message))
 
     def close(self):
-        self.connect.close()
+        self.connec.close()
 
-
-if __name__=='__main__':
-    while True:
-        #验证身份
-        while True:
-            s1 = server()
-            s1.on(8266)
-            if s1.recv()=='01':
-                s1.send('OK')
-                break
-            s1.close()
-        #接收
-        while True:
-            message=s1.recv()
-            match message:
-                case 'close':
-                    s1.send('closed')
-                    s1.close()
-                    break
-                case _:
-                    reply=str(time.time())
-                    s1.send(reply)
-    
 
